@@ -111,17 +111,22 @@ const stepTransition = {
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const BookingSection: React.FC = () => {
-  const [step, setStep] = useState<number>(1); // 1: Service selection, 2: Date selection, 3: Registration, 4: Thank you
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({
+  // Initial state values
+  const initialFormData: FormData = {
     name: '',
     email: '',
     phone: '',
     countryCode: '+1',
     message: ''
-  });
+  };
+
+  // Add these to your existing state declarations
+  const [step, setStep] = useState<number>(1);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // For calendar
   const currentDate = new Date();
@@ -318,9 +323,48 @@ const BookingSection: React.FC = () => {
 
   // Add this with other state declarations at the top of the BookingSection component
   const [showCheckout, setShowCheckout] = useState<boolean>(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Add this new function to reset all form data
+  const resetBookingData = () => {
+    setSelectedService(null);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setFormData(initialFormData);
+    setClientSecret(null);
+  };
+
+  // Update the payment success handler
+  const handlePaymentSuccess = (paymentIntent: any) => {
+    console.log('Payment successful:', paymentIntent);
+
+    // Save the current booking details for confirmation display
+    const bookingDetails = {
+      service: selectedService,
+      date: selectedDate,
+      time: selectedTime,
+      customer: { ...formData }
+    };
+
+    // Reset all form data
+    resetBookingData();
+
+    // Move to confirmation step
+    setStep(4);
+
+    // You can use the bookingDetails in step 4 to show the confirmation
+    setLastBookingDetails(bookingDetails);
+  };
+
+  // Add state for storing last booking details
+  const [lastBookingDetails, setLastBookingDetails] = useState<any>(null);
+
+  // Update the "Book Another Consultation" button click handler
+  const handleBookAnother = () => {
+    resetBookingData();
+    setStep(1);
+  };
 
   // Add this function to handle payment intent creation
   const createPaymentIntent = async () => {
@@ -393,13 +437,6 @@ const BookingSection: React.FC = () => {
     }
   }, [step, selectedService]);
 
-  // Add this function to handle successful payment
-  const handlePaymentSuccess = (paymentIntent) => {
-    console.log('Payment successful:', paymentIntent);
-    // Move to the next step
-    setStep(4);
-  };
-
   // Update the PaymentForm component
   const PaymentForm = ({ clientSecret, onSuccess, selectedService, formData }) => {
     const stripe = useStripe();
@@ -407,10 +444,9 @@ const BookingSection: React.FC = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [paymentError, setPaymentError] = useState('');
 
-    const handleSubmit = async (event) => {
-      // Prevent default form submission
-      event.preventDefault();
-      event.stopPropagation();
+    const handleSubmit = async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
 
       if (!stripe || !elements || !clientSecret) {
         return;
@@ -423,7 +459,6 @@ const BookingSection: React.FC = () => {
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
           confirmParams: {
-            return_url: window.location.href, // This won't be used since we're handling the redirect manually
             payment_method_data: {
               billing_details: {
                 name: formData.name,
@@ -439,19 +474,20 @@ const BookingSection: React.FC = () => {
           setPaymentError(error.message || 'Payment failed');
           console.error('Payment error:', error);
         } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-          // Call onSuccess callback instead of redirecting
+          // Clear the payment form elements
+          elements.getElement('payment')?.clear();
           onSuccess(paymentIntent);
         }
       } catch (err) {
         setPaymentError('An unexpected error occurred');
         console.error('Payment error:', err);
+      } finally {
+        setIsProcessing(false);
       }
-
-      setIsProcessing(false);
     };
 
     return (
-      <form onSubmit={handleSubmit}>
+      <div className="payment-form">
         <div className="mb-4">
           <div className="card-element-container p-3 bg-white rounded">
             <PaymentElement />
@@ -476,7 +512,8 @@ const BookingSection: React.FC = () => {
 
         <div className="d-flex justify-content-end">
           <button
-            type="submit"
+            type="button" // Change to type="button"
+            onClick={handleSubmit} // Add onClick handler
             disabled={!stripe || isProcessing}
             className="btn"
             style={{
@@ -496,7 +533,7 @@ const BookingSection: React.FC = () => {
             )}
           </button>
         </div>
-      </form>
+      </div>
     );
   };
 
@@ -1042,114 +1079,65 @@ const BookingSection: React.FC = () => {
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 100 }}
-                    className="confirmation text-center p-3"
+                    className="confirmation text-center p-4"
                   >
                     <motion.div
-                      className="d-flex align-items-center justify-content-center mx-auto mb-4 rounded-circle"
-                      style={{
-                        width: '4rem',
-                        height: '4rem',
-                        backgroundColor: styles.primaryLight
-                      }}
+                      className="success-icon mb-4"
                       initial={{ rotate: -180, scale: 0 }}
                       animate={{ rotate: 0, scale: 1 }}
                       transition={{ type: "spring", stiffness: 200, damping: 15 }}
                     >
-                      <FaCheck style={{ color: styles.primaryColor, fontSize: '1.5rem' }} />
-                    </motion.div>
-
-                    <motion.h3
-                      className="fs-3 fw-bold mb-2"
-                      style={{ color: styles.textDark }}
-                      initial={{ y: -20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      Consultation Confirmed!
-                    </motion.h3>
-
-                    <motion.p
-                      className="mb-4"
-                      style={{ color: styles.textMedium }}
-                      initial={{ y: -20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      Thank you for booking with our digital marketing agency. We look forward to speaking with you about your digital marketing needs.
-                    </motion.p>
-
-                    <motion.div
-                      className="bg-light rounded p-4 mb-4 text-start mx-auto"
-                      style={{ maxWidth: '500px' }}
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <h4 className="fs-5 fw-medium mb-3" style={{ color: styles.textDark }}>Appointment Details</h4>
-
-                      <div className="d-flex mb-2">
-                        <div className="me-3" style={{ color: styles.textMedium, minWidth: '120px' }}>Service:</div>
-                        <div style={{ color: styles.textDark }}>{selectedService?.title}</div>
-                      </div>
-
-                      <div className="d-flex mb-2">
-                        <div className="me-3" style={{ color: styles.textMedium, minWidth: '120px' }}>Date & Time:</div>
-                        <div style={{ color: styles.textDark }}>{selectedDate} at {selectedTime}</div>
-                      </div>
-
-                      <div className="d-flex mb-2">
-                        <div className="me-3" style={{ color: styles.textMedium, minWidth: '120px' }}>Name:</div>
-                        <div style={{ color: styles.textDark }}>{formData.name}</div>
-                      </div>
-
-                      <div className="d-flex mb-2">
-                        <div className="me-3" style={{ color: styles.textMedium, minWidth: '120px' }}>Email:</div>
-                        <div style={{ color: styles.textDark }}>{formData.email}</div>
-                      </div>
-
-                      <div className="d-flex">
-                        <div className="me-3" style={{ color: styles.textMedium, minWidth: '120px' }}>Phone:</div>
-                        <div style={{ color: styles.textDark }}>{formData.countryCode} {formData.phone}</div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                      className="d-flex justify-content-center"
-                    >
-                      <motion.div
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
+                      <div
+                        className="rounded-circle bg-success d-inline-flex align-items-center justify-content-center"
+                        style={{ width: '80px', height: '80px' }}
                       >
-                        <button
-                          // variant="primary"
-                          onClick={() => setStep(1)}
-                          style={{
-                            background: styles.gradient,
-                            border: 'none'
-                          }}
-                          className="px-4 py-3 header-btn1"
-                        >
-                          Book Another Consultation
-                        </button>
-                      </motion.div>
+                        <FaCheck className="text-white" style={{ fontSize: '2rem' }} />
+                      </div>
                     </motion.div>
 
-                    <motion.div
-                      className="mt-4 pt-3 border-top"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.6 }}
+                    <h3 className="mb-3">Booking Confirmed!</h3>
+                    <p className="text-muted mb-4">
+                      Thank you for your booking. We have sent a confirmation email with all the details.
+                    </p>
+
+                    {lastBookingDetails && (
+                      <div className="booking-details text-start mx-auto" style={{ maxWidth: '400px' }}>
+                        <div className="card p-3 mb-4">
+                          <h5 className="mb-3">Booking Details</h5>
+                          <p className="mb-2">
+                            <strong>Service:</strong> {lastBookingDetails.service?.title}
+                          </p>
+                          <p className="mb-2">
+                            <strong>Date:</strong> {lastBookingDetails.date}
+                          </p>
+                          <p className="mb-2">
+                            <strong>Time:</strong> {lastBookingDetails.time}
+                          </p>
+                          <p className="mb-2">
+                            <strong>Name:</strong> {lastBookingDetails.customer.name}
+                          </p>
+                          <p className="mb-2">
+                            <strong>Email:</strong> {lastBookingDetails.customer.email}
+                          </p>
+                          <p className="mb-0">
+                            <strong>Phone:</strong> {lastBookingDetails.customer.countryCode} {lastBookingDetails.customer.phone}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleBookAnother}
+                      className="btn"
+                      style={{
+                        background: styles.gradient,
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px 24px',
+                      }}
                     >
-                      <p className="small mb-2" style={{ color: styles.textMedium }}>
-                        Need to make changes to your appointment?
-                      </p>
-                      <p className="small mb-0" style={{ color: styles.textMedium }}>
-                        Contact us at <a href="mailto:support@digitalagency.com" style={{ color: styles.primaryColor }}>support@digitalagency.com</a> or call <a href="tel:+18005551234" style={{ color: styles.primaryColor }}>+1 (800) 555-1234</a>
-                      </p>
-                    </motion.div>
+                      Book Another Consultation
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
