@@ -5,8 +5,7 @@ import {
   FaCalendarAlt,
   FaClock,
   FaArrowLeft,
-  FaUserAlt,
-  FaEnvelope,
+ 
 
   FaCheck,
   FaChevronLeft,
@@ -38,10 +37,10 @@ interface Service {
   price: string;
 }
 
-type CountryCode = {
-  code: string;
-  country: string;
-};
+// type CountryCode = {
+//   code: string;
+//   country: string;
+// };
 
 type FormData = {
   name: string;
@@ -183,18 +182,18 @@ const BookingSection: React.FC = () => {
   ];
 
   // Country codes for phone
-  const countryCodes: CountryCode[] = [
-    { code: '+1', country: 'US/CA' },
-    { code: '+44', country: 'UK' },
-    { code: '+61', country: 'AU' },
-    { code: '+64', country: 'NZ' },
-    { code: '+49', country: 'DE' },
-    { code: '+33', country: 'FR' },
-    { code: '+91', country: 'IN' },
-    { code: '+86', country: 'CN' },
-    { code: '+52', country: 'MX' },
-    { code: '+81', country: 'JP' }
-  ];
+  // const countryCodes: CountryCode[] = [
+  //   { code: '+1', country: 'US/CA' },
+  //   { code: '+44', country: 'UK' },
+  //   { code: '+61', country: 'AU' },
+  //   { code: '+64', country: 'NZ' },
+  //   { code: '+49', country: 'DE' },
+  //   { code: '+33', country: 'FR' },
+  //   { code: '+91', country: 'IN' },
+  //   { code: '+86', country: 'CN' },
+  //   { code: '+52', country: 'MX' },
+  //   { code: '+81', country: 'JP' }
+  // ];
 
   // Generate calendar days
   const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
@@ -268,15 +267,15 @@ const BookingSection: React.FC = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleCountryCodeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
-    setFormData({ ...formData, countryCode: e.target.value });
-  };
+  // const handleCountryCodeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+  //   setFormData({ ...formData, countryCode: e.target.value });
+  // };
 
-  const handleSubmit = (): void => {
-    // e.preventDefault();
-    setStep(4);
-    setShowCheckout(true);
-  };
+  // const handleSubmit = (): void => {
+  //   // e.preventDefault();
+  //   setStep(4);
+  //   setShowCheckout(true);
+  // };
 
   const goBack = (): void => {
     setStep(step - 1);
