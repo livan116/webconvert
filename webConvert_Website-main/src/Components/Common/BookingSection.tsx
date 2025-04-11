@@ -5,7 +5,7 @@ import {
   FaCalendarAlt,
   FaClock,
   FaArrowLeft,
- 
+
 
   FaCheck,
   FaChevronLeft,
@@ -437,7 +437,17 @@ const BookingSection: React.FC = () => {
   }, [step, selectedService]);
 
   // Update the PaymentForm component
-  const PaymentForm = ({ clientSecret, onSuccess, selectedService, formData }) => {
+  const PaymentForm = ({
+    clientSecret,
+    onSuccess,
+    selectedService,
+    formData,
+  }: {
+    clientSecret: any;
+    onSuccess: any;
+    selectedService: any; // ideally replace with specific type
+    formData: any;         // ideally replace with specific type
+  }) => {
     const stripe = useStripe();
     const elements = useElements();
     const [isProcessing, setIsProcessing] = useState(false);
